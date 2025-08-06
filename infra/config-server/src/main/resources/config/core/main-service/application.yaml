@@ -12,7 +12,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        default_schema: order_schema
+        default_schema: explore
     show-sql: true
   sql:
     init:
