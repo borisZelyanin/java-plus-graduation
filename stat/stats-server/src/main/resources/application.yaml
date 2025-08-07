@@ -1,6 +1,8 @@
 spring:
   application:
     name: stats-server
+  profiles:
+    active: main,stats
   startup:
     date: ${startup.date:unknown}
   config:
