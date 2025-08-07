@@ -20,4 +20,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: "env,health,metrics"
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true
