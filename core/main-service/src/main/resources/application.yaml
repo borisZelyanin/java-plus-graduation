@@ -1,6 +1,8 @@
 spring:
   application:
     name: main-service
+  profiles:
+    active: main,main-srvice
   startup:
     date: ${startup.date:unknown}
   config:
