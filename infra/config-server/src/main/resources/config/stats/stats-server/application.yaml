@@ -20,6 +20,12 @@ spring:
 server:
   port: 0
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "env,health,metrics"
+
 springdoc:
   api-docs:
     path: /v3/api-docs
