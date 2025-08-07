@@ -157,14 +157,7 @@ public class PublicEventController {
                                                       String end,
                                                       List<String> uris,
                                                       boolean unique) {
-        ResponseEntity<List<ViewStatsDto>> response = statClient.getStats(
-                start,
-                end,
-                uris,
-                unique
-        );
-
-        return response.getBody();
+        return statClient.getStats(start, end, uris, unique);
     }
 
     public List<String> buildUrisFromPathAndIds(String uriPath, List<Long> ids) {
