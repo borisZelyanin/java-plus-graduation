@@ -1,0 +1,116 @@
+package ru.practicum.services.event.support;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import ru.practicum.api.web.client.feign.UserServiceFeignClient;
+import ru.practicum.lib.dto.event.UpdateEventUserRequest;
+import ru.practicum.lib.dto.request.ParticipationRequestDto;
+import ru.practicum.lib.dto.user.UserDto;
+import ru.practicum.lib.enums.EventState;
+import ru.practicum.lib.enums.RequestStatus;
+import ru.practicum.lib.exception.ConflictException;
+import ru.practicum.lib.exception.NotFoundException;
+import ru.practicum.lib.exception.ValidationException;
+import ru.practicum.services.event.model.Event;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class EventValidator {
+    private final UserServiceFeignClient userServiceClient ;
+
+
+    public void validateUserExists(Long userId) {
+        if (userServiceClient.getUserById(userId).isEmpty()) {
+            log.error("Пользователя с id {} не найден", userId);
+            throw new NotFoundException("Пользователя с id не найден: " + userId);
+        }
+    }
+
+    public void validateInitiator(Event event, UserDto user) {
+        if (!event.getInitiator().equals(user.getId())) {
+            throw new ValidationException("У этого события другой инициатор");
+        }
+    }
+
+
+    public void validateRequestsBelongToEvent(List<ParticipationRequestDto> requests, Long eventId) {
+        boolean allMatch = requests.stream()
+                .allMatch(request -> request.getEvent().equals(eventId));
+        if (!allMatch) {
+            throw new ValidationException("Неверно передан список запросов");
+        }
+    }
+
+    public void validateParticipantLimit(Event event) {
+        if (event.getParticipantLimit() != 0 &&
+                event.getConfirmedRequests() >= event.getParticipantLimit()) {
+            throw new ConflictException("Лимит заявок на участие в событии исчерпан");
+        }
+    }
+
+    public void validateNoConfirmedRequests(List<ParticipationRequestDto> requests) {
+        if (requests.stream().anyMatch(r -> r.getStatus() == RequestStatus.CONFIRMED)) {
+            throw new ConflictException("Нельзя отменить уже подтвержденные заявки");
+        }
+    }
+
+    public void validateAllRequestsPending(List<ParticipationRequestDto> requests) {
+        if (requests.stream().anyMatch(r -> r.getStatus() != RequestStatus.PENDING)) {
+            throw new ConflictException("Все заявки должны быть в статусе ожидания");
+        }
+    }
+
+    public void validateEventOwnership(Event event, Long userId) {
+        if (!event.getInitiator().equals(userId)) {
+            throw new ValidationException("Только пользователь создавший событие может получить его полное описание");
+        }
+    }
+
+    public void validateUserUpdate(Event oldEvent, UserDto user, UpdateEventUserRequest updateDto) {
+        if (!oldEvent.getInitiator().equals(user.getId())) {
+            throw new ValidationException("Только пользователь создавший событие может его редактировать");
+        }
+        if (oldEvent.getState().equals(EventState.PUBLISHED)) {
+            throw new ConflictException("Нельзя изменить опубликованное событие");
+        }
+        if (Objects.nonNull(updateDto.getEventDate()) &&
+                updateDto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new ValidationException("Событие не может начинаться ранее чем через 2 часа");
+        }
+    }
+
+    public void validateAdminEventDate(Event oldEvent) {
+        if (oldEvent.getPublishedOn() == null) return;
+        LocalDateTime minEventStartTime = oldEvent.getPublishedOn().plusHours(1);
+        if (oldEvent.getEventDate().isBefore(minEventStartTime)) {
+            throw new ConflictException(
+                    "Событие не может начинаться раньше чем через 1 час после публикации. " +
+                            "Минимальное время: " + minEventStartTime
+            );
+        }
+    }
+
+    public void validateAdminPublishedEventDate(LocalDateTime newEventDate, Event oldEvent) {
+        LocalDateTime minEventStartTime = oldEvent.getPublishedOn() != null
+                ? oldEvent.getPublishedOn().plusHours(1)
+                : LocalDateTime.now().plusHours(1);
+
+        if (newEventDate != null && newEventDate.isBefore(minEventStartTime)) {
+            throw new ConflictException("Новая дата начала должна быть не ранее " + minEventStartTime);
+        }
+    }
+
+    public void validateAdminEventUpdateState(EventState currentState) {
+        if (currentState == EventState.PUBLISHED || currentState == EventState.CANCELED) {
+            throw new ConflictException("Запрещено редактирование в статусах: " +
+                    String.join(", ", EventState.PUBLISHED.name(), EventState.CANCELED.name()));
+        }
+    }
+
+}
