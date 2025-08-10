@@ -51,10 +51,15 @@ public class RequestValidator {
     }
 
     public void validateRequestOwnership(UserDto user, Request request) {
-        if (!request.getRequester().equals(user)) {
-            throw new ValidationException("Только пользователь подавший заявку может отменить ее. " +
-                    "Пользователь ID: " + user.getId() +
-                    "Заявка с ID: " + request.getId());
+        if (!request.getRequester().equals(user.getId())) {
+            throw new ValidationException(
+                    String.format(
+                            "Только пользователь, подавший заявку, может отменить ее. Пользователь ID: %d, Заявка с ID: %d с юзер %d",
+                            user.getId(),
+                            request.getId(),
+                            request.getRequester()
+                    )
+            );
         }
     }
 
