@@ -9,9 +9,11 @@ import ru.practicum.lib.dto.event.*;
 import ru.practicum.lib.dto.user.UserDto;
 import ru.practicum.lib.exception.NotFoundException;
 import ru.practicum.services.event.mapper.EventMapper;
+import ru.practicum.services.event.model.Category;
 import ru.practicum.services.event.model.Event;
 import ru.practicum.services.event.repository.CategoryRepository;
 import ru.practicum.services.event.repository.EventRepository;
+import ru.practicum.services.event.repository.LocationRepository;
 import ru.practicum.services.event.support.EventServiceHelperBean;
 import ru.practicum.services.event.utils.FeigenClient;
 import ru.practicum.services.event.support.EventValidator;
@@ -30,6 +32,7 @@ public class AdminEventServiceImpl implements AdminEventService {
     private final EventValidator eventValidator;
     private final FeigenClient feigenClient;
     private final CategoryRepository categoryRepository;
+    private final LocationRepository locationRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -75,13 +78,29 @@ public class AdminEventServiceImpl implements AdminEventService {
 
     @Transactional
     @Override
-    public EventFullDto saveForce(EventFullDto eventDto) {
-        Event eventEntity = EventMapper.toEventFull(eventDto);
-        // сохраняем в БД
-        Event savedEvent = eventRepository.save(eventEntity);
-        // возвращаем обратно в формате DTO
-        UserDto user = feigenClient.getUserById(savedEvent.getInitiator());
-        return EventMapper.toFullDto(savedEvent,user);
+    public EventFullDto saveForce(EventFullDto dto) {
+        Event event = EventMapper.toEventFull(dto);
+
+        // Category -> ссылка на управляемую сущность
+        if (dto.getCategory() != null && dto.getCategory().getId() != null) {
+            Category catRef = categoryRepository.getReferenceById(dto.getCategory().getId());
+            event.setCategory(catRef);
+        }
+
+        // Location -> либо ссылка, либо сначала сохраняем новую
+        if (event.getLocation() != null) {
+            var loc = event.getLocation();
+            if (loc.getId() != null) {
+                event.setLocation(locationRepository.getReferenceById(loc.getId()));
+            } else {
+                event.setLocation(locationRepository.save(loc));
+            }
+        }
+
+        Event saved = eventRepository.save(event);
+
+        UserDto user = feigenClient.getUserById(saved.getInitiator());
+        return EventMapper.toFullDto(saved, user);
     }
 
     @Transactional
