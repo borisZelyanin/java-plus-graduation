@@ -10,8 +10,10 @@ import ru.practicum.lib.dto.event.NewEventDto;
 import ru.practicum.lib.dto.event.UpdateEventUserRequest;
 import ru.practicum.lib.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.lib.dto.request.ParticipationRequestDto;
+import ru.practicum.lib.dto.request.UpdateRequestsStatusDto;
 import ru.practicum.lib.dto.user.UserDto;
 import ru.practicum.lib.enums.EventState;
+import ru.practicum.lib.enums.RequestStatus;
 import ru.practicum.services.event.mapper.EventMapper;
 import ru.practicum.services.event.mapper.LocationMapper;
 import ru.practicum.services.event.model.Category;
@@ -24,12 +26,9 @@ import ru.practicum.services.event.utils.LocationCalc;
 import ru.practicum.services.event.support.EventValidator;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 
 @Slf4j
 @Service
@@ -107,39 +106,52 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     }
 
     @Override
-    public Map<String, List<ParticipationRequestDto>> approveRequests(
-            Long userId,
-            Long eventId,
-            EventRequestStatusUpdateRequest eventRequestStatus
-    ) {
-        // Заглушка: логируем входные данные
-        log.info("approveRequests() вызван с userId={}, eventId={}, statusUpdate={}",
-                userId, eventId, eventRequestStatus);
+    public Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
+                                                                      Long eventId,
+                                                                      EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
+        UserDto user = feigenClient.getUserById(userId);
+        Event event = eventServiceHelperBean.getEventById(eventId);
+        eventValidator.validateInitiator(event, user);
 
-        // Возвращаем пустую карту с ключами, как может ожидать вызывающий код
-        Map<String, List<ParticipationRequestDto>> result = new HashMap<>();
-        result.put("confirmedRequests", Collections.emptyList());
-        result.put("rejectedRequests", Collections.emptyList());
+        List<ParticipationRequestDto> requests = eventServiceHelperBean.getAndValidateRequests(eventId, eventRequestStatusUpdateRequest.getRequestIds());
+        RequestStatus status = eventRequestStatusUpdateRequest.getStatus();
 
-        return result;
+        if (status == RequestStatus.CONFIRMED) {
+            eventValidator.validateParticipantLimit(event);
+        }
+
+        eventValidator.validateNoConfirmedRequests(requests);
+
+        if (status == RequestStatus.REJECTED) {
+            updateRequestStatuses(requests, RequestStatus.REJECTED);
+            List<ParticipationRequestDto> rejectedRequests = feigenClient.saveBatchRequests(requests);
+            return Map.of("rejectedRequests", rejectedRequests);
+        }
+
+        int availableSlots = event.getParticipantLimit() - event.getConfirmedRequests();
+        List<ParticipationRequestDto> confirmed = requests.stream().limit(availableSlots).toList();
+        List<ParticipationRequestDto> rejected = requests.stream().skip(availableSlots).toList();
+
+        updateRequestStatuses(confirmed, RequestStatus.CONFIRMED);
+        updateRequestStatuses(rejected, RequestStatus.REJECTED);
+
+        feigenClient.saveBatchRequests(requests);
+        event.setConfirmedRequests(event.getConfirmedRequests() + confirmed.size());
+        eventRepository.save(event);
+
+        return Map.of(
+                "confirmedRequests", confirmed,
+                "rejectedRequests", rejected
+        );
+
     }
 
+    public void updateRequestStatuses(List<ParticipationRequestDto> requests,
+                                      RequestStatus status) {
+        UpdateRequestsStatusDto body = new UpdateRequestsStatusDto();
+        body.setStatus(status);
+        body.setRequests(requests);
+        feigenClient.updateBatchRequestStatuses(body);
+    }
 
-//    @Override
-//    public Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
-//                                                                      Long eventId,
-//                                                                      EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
-//        UserDto user = FeigenClient.getUserById(userId);
-//        Event event = EventServiceHelperBean.getEventById(eventId);
-//        eventValidator.validateInitiator(event, user);
-//
-//        List<ParticipationRequestDto> requests = EventServiceHelperBean.getAndValidateRequests(eventId, eventRequestStatusUpdateRequest.getRequestIds());
-//        RequestStatus status = eventRequestStatusUpdateRequest.getStatus();
-//
-//        if (status == RequestStatus.CONFIRMED) {
-//            eventValidator.validateParticipantLimit(event);
-//        }
-//
-//        return processStatusSpecificLogic(event, requests, status);
-//    }
 }

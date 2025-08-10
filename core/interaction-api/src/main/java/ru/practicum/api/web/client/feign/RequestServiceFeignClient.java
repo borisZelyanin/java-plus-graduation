@@ -3,6 +3,7 @@ package ru.practicum.api.web.client.feign;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.lib.dto.request.ParticipationRequestDto;
+import ru.practicum.lib.dto.request.UpdateRequestsStatusDto;
 
 import java.util.List;
 
@@ -30,4 +31,13 @@ public interface RequestServiceFeignClient {
 
     @GetMapping("/admin/events/{eventId}/requests")
     List<ParticipationRequestDto> getByEvent(@PathVariable("eventId") Long eventId);
+
+    @GetMapping("/admin/users/requests")
+    List<ParticipationRequestDto> getByUsers(@RequestParam("userIds") List<Long> userIds);
+
+    @PostMapping(value = "/admin/batch", consumes = "application/json", produces = "application/json")
+    List<ParticipationRequestDto> saveBatch(@RequestBody List<ParticipationRequestDto> requests);
+
+    @PostMapping(path = "/admin/status", consumes = "application/json", produces = "application/json")
+    List<ParticipationRequestDto> updateStatuses(@RequestBody UpdateRequestsStatusDto body);
 }

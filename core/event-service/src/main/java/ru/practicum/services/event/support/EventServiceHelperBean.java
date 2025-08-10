@@ -2,6 +2,7 @@ package ru.practicum.services.event.support;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import ru.practicum.api.web.client.feign.AdminEventFeignClient;
 import ru.practicum.lib.dto.event.UpdateEventAdminRequest;
 import ru.practicum.lib.dto.event.UpdateEventUserRequest;
 import ru.practicum.lib.dto.request.ParticipationRequestDto;
@@ -14,6 +15,7 @@ import ru.practicum.services.event.model.Category;
 import ru.practicum.services.event.model.Event;
 import ru.practicum.services.event.repository.CategoryRepository;
 import ru.practicum.services.event.repository.EventRepository;
+import ru.practicum.services.event.utils.FeigenClient;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -27,6 +29,8 @@ public class EventServiceHelperBean {
     private final EventRepository eventRepository;
     private final EventValidator eventValidator;
     private final CategoryRepository categoryRepository;
+    private final FeigenClient feigenClient;
+
 
     public Event getEventById(Long eventId) {
         return eventRepository.findById(eventId)
@@ -68,11 +72,11 @@ public class EventServiceHelperBean {
         }
     }
 
-//    public List<ParticipationRequestDto> getAndValidateRequests(Long eventId, List<Long> requestIds) {
-//        List<ParticipationRequestDto> requests = requestRepository.findRequestByIdIn(requestIds);
-//        eventValidator.validateRequestsBelongToEvent(requests, eventId);
-//        return requests;
-//    }
+    public List<ParticipationRequestDto> getAndValidateRequests(Long eventId, List<Long> requestIds) {
+        List<ParticipationRequestDto> requests = feigenClient.getRequestByUser(requestIds);
+        eventValidator.validateRequestsBelongToEvent(requests, eventId);
+        return requests;
+    }
 
 
     private void updateState(StateAction stateAction, Event event) {

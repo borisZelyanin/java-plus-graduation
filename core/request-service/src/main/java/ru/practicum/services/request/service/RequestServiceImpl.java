@@ -12,7 +12,9 @@ import ru.practicum.lib.exception.NotFoundException;
 import ru.practicum.services.request.mapper.RequestMapper;
 import ru.practicum.services.request.model.Request;
 import ru.practicum.lib.enums.RequestStatus;
+import ru.practicum.services.request.model.RequestStatusEntity;
 import ru.practicum.services.request.repository.RequestRepository;
+import ru.practicum.services.request.repository.RequestStatusRepository;
 import ru.practicum.services.request.support.EventServiceHelperBean;
 import ru.practicum.services.request.utils.FeigenClient;
 
@@ -28,13 +30,14 @@ public class RequestServiceImpl implements RequestService {
     private final EventServiceHelperBean EventServiceHelperBean;
     private final RequestValidator requestValidator;
     private final FeigenClient FeigenClient;
+    private final RequestStatusRepository requestStatusRepository;
 
 
     @Transactional(readOnly = true)
     @Override
     public List<ParticipationRequestDto> getUserRequests(Long userId) {
         log.debug("Запрос на получение всех заявок участия пользователя с ID: {}", userId);
-        return requestRepository.findByRequester( userId).stream()
+        return requestRepository.findByRequester(userId).stream()
                 .map(RequestMapper::toRequestDto)
                 .collect(Collectors.toList());
     }
@@ -93,6 +96,53 @@ public class RequestServiceImpl implements RequestService {
                 .toList();
     }
 
+    @Override
+    public List<ParticipationRequestDto> getUsersByRequests(List<Long> userId) {
+        List<Request> requests = requestRepository.findByIdIn(userId);
+        if (requests.isEmpty()) {
+            throw new NotFoundException("Заявки для события id=" + userId + " не найдены");
+        }
+        return requests.stream()
+                .map(RequestMapper::toRequestDto)
+                .toList();
+    }
+
+    @Transactional
+    @Override
+    public List<ParticipationRequestDto> saveBatch(List<ParticipationRequestDto> requests) {
+        if (requests == null || requests.isEmpty()) return List.of();
+
+        List<Request> toSave = requests.stream()
+                .map(dto -> {
+                    Request r = RequestMapper.toEntity(dto);
+                    if (dto.getStatus() != null) {
+                        r.setStatus(requestStatusRepository
+                                .findByName(dto.getStatus())
+                                .orElseThrow(() -> new IllegalArgumentException("Unknown status: " + dto.getStatus())));
+                    }
+                    return r;
+                })
+                .toList();
+
+        return requestRepository.saveAll(toSave).stream()
+                .map(RequestMapper::toRequestDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public List<ParticipationRequestDto> updateStatusesForRequests(
+            List<ParticipationRequestDto> requests,
+            RequestStatus status
+    ) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        requests.forEach(r -> r.setStatus(status));
+
+        return saveBatch(requests);
+    }
 
 }
 

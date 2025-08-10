@@ -86,4 +86,5 @@ public class EventServiceHelperBean {
         }
         request.setStatus(getRequestStatusEntityByRequestStatus(newStatus));
     }
+
 }

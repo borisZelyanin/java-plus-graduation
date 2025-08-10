@@ -18,4 +18,5 @@ public class RequestStatusEntity {
     @Enumerated(EnumType.STRING)
     @Column(unique = true, nullable = false)
     private RequestStatus name;
+
 }
