@@ -2,11 +2,11 @@
 CREATE SCHEMA IF NOT EXISTS event;
 
 -- Таблица категорий
-CREATE TABLE IF NOT EXISTS explore.categories (
+CREATE TABLE IF NOT EXISTS event.categories (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE
 );
-CREATE INDEX IF NOT EXISTS idx_categories_name ON explore.categories(name);
+CREATE INDEX IF NOT EXISTS idx_categories_name ON event.categories(name);
 
 -- Таблица локаций
 CREATE TABLE IF NOT EXISTS event.locations (
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS event.events (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     annotation TEXT NOT NULL,
-    category_id BIGINT NOT NULL REFERENCES explore.categories(id),
+    category_id BIGINT NOT NULL REFERENCES event.categories(id),
     paid BOOLEAN NOT NULL,
     event_date TIMESTAMP NOT NULL,
     initiator_id BIGINT NOT NULL,
@@ -43,18 +43,18 @@ CREATE INDEX IF NOT EXISTS idx_events_location_id ON event.events(location_id);
 CREATE INDEX IF NOT EXISTS idx_events_paid ON event.events(paid);
 
 -- Таблица подборок
-CREATE TABLE IF NOT EXISTS explore.compilations (
+CREATE TABLE IF NOT EXISTS event.compilations (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     pinned BOOLEAN NOT NULL DEFAULT FALSE
 );
-CREATE INDEX IF NOT EXISTS idx_compilations_pinned ON explore.compilations(pinned);
+CREATE INDEX IF NOT EXISTS idx_compilations_pinned ON event.compilations(pinned);
 
 -- Таблица связи подборки и события
-CREATE TABLE IF NOT EXISTS explore.compilation_events (
-    compilation_id BIGINT NOT NULL REFERENCES explore.compilations(id) ON DELETE CASCADE,
-    event_id BIGINT NOT NULL REFERENCES explore.events(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS event.compilation_events (
+    compilation_id BIGINT NOT NULL REFERENCES event.compilations(id) ON DELETE CASCADE,
+    event_id BIGINT NOT NULL REFERENCES event.events(id) ON DELETE CASCADE,
     PRIMARY KEY (compilation_id, event_id)
 );
-CREATE INDEX IF NOT EXISTS idx_compilation_events_compilation_id ON explore.compilation_events(compilation_id);
-CREATE INDEX IF NOT EXISTS idx_compilation_events_event_id ON explore.compilation_events(event_id);
+CREATE INDEX IF NOT EXISTS idx_compilation_events_compilation_id ON event.compilation_events(compilation_id);
+CREATE INDEX IF NOT EXISTS idx_compilation_events_event_id ON event.compilation_events(event_id);
