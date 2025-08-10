@@ -16,4 +16,6 @@ public interface RequestService {
                                                        Long requestId);
 
     ParticipationRequestDto getParticipationRequest(Long userId, Long requestId);
+
+    List<ParticipationRequestDto>  getParticipationEvent(Long eventId);
 }

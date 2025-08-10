@@ -27,4 +27,7 @@ public interface RequestServiceFeignClient {
     @PatchMapping("/{userId}/requests/{requestId}/cancel")
     ParticipationRequestDto cancelParticipationRequest(@PathVariable("userId") Long userId,
                                                        @PathVariable("requestId") Long requestId);
+
+    @GetMapping("/admin/events/{eventId}/requests")
+    List<ParticipationRequestDto> getByEvent(@PathVariable("eventId") Long eventId);
 }

@@ -12,11 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.lib.dto.event.EventFullDto;
-import ru.practicum.lib.dto.event.NewEventDto;
 import ru.practicum.lib.dto.event.SearchAdminEventsParamDto;
 import ru.practicum.lib.dto.event.UpdateEventAdminRequest;
 import ru.practicum.lib.enums.EventState;
-import ru.practicum.services.event.model.Event;
 import ru.practicum.services.event.service.AdminEventService;
 import ru.practicum.services.event.support.EventControllerHelperBean;
 

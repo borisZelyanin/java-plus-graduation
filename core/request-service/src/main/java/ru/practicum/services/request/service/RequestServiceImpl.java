@@ -82,6 +82,17 @@ public class RequestServiceImpl implements RequestService {
         return RequestMapper.toRequestDto(request);
     }
 
+    @Override
+    public List<ParticipationRequestDto> getParticipationEvent(Long eventId) {
+        List<Request> requests = requestRepository.findByEvent(eventId);
+        if (requests.isEmpty()) {
+            throw new NotFoundException("Заявки для события id=" + eventId + " не найдены");
+        }
+        return requests.stream()
+                .map(RequestMapper::toRequestDto)
+                .toList();
+    }
+
 
 }
 

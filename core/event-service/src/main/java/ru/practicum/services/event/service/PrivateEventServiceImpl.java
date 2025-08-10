@@ -103,8 +103,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = eventServiceHelperBean.getEventById(eventId);
         eventValidator.validateEventOwnership(event, userId);
 
-        ParticipationRequestDto request = feigenClient.getRequest(userId, eventId);
-        return request != null ? List.of(request) : List.of(); // пустой список, если null
+        return  feigenClient.getRequestByEvent(eventId);
     }
 
     @Override

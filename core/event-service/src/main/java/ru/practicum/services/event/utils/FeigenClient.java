@@ -9,6 +9,8 @@ import ru.practicum.lib.dto.request.ParticipationRequestDto;
 import ru.practicum.lib.dto.user.UserDto;
 import ru.practicum.lib.exception.NotFoundException;
 
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
 public class FeigenClient {
@@ -25,12 +27,12 @@ public class FeigenClient {
         }
     }
 
-    public ParticipationRequestDto getRequest(Long userId, Long eventId) {
+    public List<ParticipationRequestDto> getRequestByEvent(Long eventId) {
         try {
-            return RequestServiceFeignClient.getParticipationRequest(userId, eventId);
+            return RequestServiceFeignClient.getByEvent( eventId);
         }
         catch (FeignException.NotFound e) {
-            throw new NotFoundException("Пользователя с id = " + userId + " нет.");
+            throw new NotFoundException(" event = " + eventId + " нет.");
         }
     }
 

@@ -13,11 +13,6 @@ spring:
           predicates:
             - Path=/users/*/requests/**
 
-        - id: request_service_event_requests
-          uri: lb://request-service
-          predicates:
-            - Path=/users/*/events/*/requests
-
         # Admin comment
         - id: comment_service_admin
           uri: lb://comment-service

@@ -23,4 +23,6 @@ public class RequestEventController {
         log.info("Запрос на отмену заявки на участие с id = {}", eventId);
         return ResponseEntity.ok(requestService.getParticipationRequest(userId, eventId));
     }
+
+
 }
