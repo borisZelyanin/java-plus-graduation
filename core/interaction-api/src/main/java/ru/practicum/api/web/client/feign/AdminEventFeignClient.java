@@ -21,7 +21,6 @@ public interface AdminEventFeignClient {
     @PostMapping(path = "/admin/events", consumes = "application/json")
     EventFullDto save(@RequestBody EventFullDto event);
 
-
     @PostMapping("/admin/categories")
     ResponseEntity<CategoryDto> createCategory(@RequestBody CategoryDto dto);
 

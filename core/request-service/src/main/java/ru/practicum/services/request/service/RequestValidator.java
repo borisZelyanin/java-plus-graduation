@@ -37,7 +37,7 @@ public class RequestValidator {
     }
 
     private void checkEventOwnership(UserDto user, EventFullDto event) {
-        if (event.getInitiator().equals(user)) {
+        if (event.getInitiator().getId().equals(user.getId())) {
             throw new ConflictException("Пользователь не может подать заяку на участие в своем же мероприятии");
         }
     }

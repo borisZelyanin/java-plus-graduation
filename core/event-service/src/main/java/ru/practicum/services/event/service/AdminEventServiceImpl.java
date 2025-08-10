@@ -9,6 +9,7 @@ import ru.practicum.lib.dto.event.*;
 import ru.practicum.lib.dto.user.UserDto;
 import ru.practicum.lib.exception.NotFoundException;
 import ru.practicum.services.event.mapper.EventMapper;
+import ru.practicum.services.event.mapper.LocationMapper;
 import ru.practicum.services.event.model.Category;
 import ru.practicum.services.event.model.Event;
 import ru.practicum.services.event.repository.CategoryRepository;
@@ -79,28 +80,56 @@ public class AdminEventServiceImpl implements AdminEventService {
     @Transactional
     @Override
     public EventFullDto saveForce(EventFullDto dto) {
-        Event event = EventMapper.toEventFull(dto);
+        Event event;
 
-        // Category -> ссылка на управляемую сущность
-        if (dto.getCategory() != null && dto.getCategory().getId() != null) {
-            Category catRef = categoryRepository.getReferenceById(dto.getCategory().getId());
-            event.setCategory(catRef);
+        if (dto.getId() != null) {
+            // пробуем найти существующее событие
+            event = eventRepository.findById(dto.getId())
+                    .orElseGet(() -> EventMapper.toEventFull(dto)); // если не нашли — создаём новое
+        } else {
+            event = EventMapper.toEventFull(dto);
         }
 
-        // Location -> либо ссылка, либо сначала сохраняем новую
-        if (event.getLocation() != null) {
-            var loc = event.getLocation();
-            if (loc.getId() != null) {
-                event.setLocation(locationRepository.getReferenceById(loc.getId()));
-            } else {
-                event.setLocation(locationRepository.save(loc));
-            }
-        }
+        // обновляем поля из DTO
+        applyDtoToEvent(event, dto);
 
         Event saved = eventRepository.save(event);
 
         UserDto user = feigenClient.getUserById(saved.getInitiator());
         return EventMapper.toFullDto(saved, user);
+    }
+
+    private void applyDtoToEvent(Event event, EventFullDto dto) {
+        event.setAnnotation(dto.getAnnotation());
+        event.setDescription(dto.getDescription());
+        event.setEventDate(dto.getEventDate());
+        event.setPaid(dto.getPaid());
+        event.setParticipantLimit(dto.getParticipantLimit());
+        event.setRequestModeration(dto.getRequestModeration());
+        event.setTitle(dto.getTitle());
+        event.setConfirmedRequests(dto.getConfirmedRequests());
+
+        if (dto.getState() != null) {
+            event.setState(dto.getState());
+        }
+        if (dto.getInitiator() != null) {
+            event.setInitiator(dto.getInitiator().getId());
+        }
+
+        // CATEGORY
+        if (dto.getCategory() != null && dto.getCategory().getId() != null) {
+            event.setCategory(categoryRepository.getReferenceById(dto.getCategory().getId()));
+        }
+
+        // LOCATION
+        if (dto.getLocation() != null) {
+            var locEntity = LocationMapper.toEntity(dto.getLocation());
+            if (locEntity.getId() != null) {
+                event.setLocation(locationRepository.getReferenceById(locEntity.getId()));
+            } else {
+                event.setLocation(locationRepository.save(locEntity));
+            }
+        }
     }
 
     @Transactional
