@@ -1,0 +1,40 @@
+spring:
+  profiles:
+    active: main,stat
+  datasource:
+    url: jdbc:postgresql://localhost:5433/stats
+    driver-class-name: org.postgresql.Driver
+    username: stats_user
+    password: stats_password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: stat
+    show-sql: true
+  sql:
+    init:
+      mode: always
+server:
+  port: 9090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "env,health,metrics,info"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    ru.practicum.yandex.shopping.store: DEBUG
+    org.hibernate.SQL: TRACE
+    org.hibernate.type.descriptor.sql: TRACE
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.transaction.interceptor: TRACE
