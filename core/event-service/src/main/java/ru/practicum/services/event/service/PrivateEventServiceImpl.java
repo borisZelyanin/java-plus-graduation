@@ -26,6 +26,7 @@ import ru.practicum.services.event.utils.LocationCalc;
 import ru.practicum.services.event.support.EventValidator;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -123,7 +124,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         eventValidator.validateNoConfirmedRequests(requests);
 
         if (status == RequestStatus.REJECTED) {
-            updateRequestStatuses(requests, RequestStatus.REJECTED);
+            requests.forEach(r -> r.setStatus(RequestStatus.REJECTED));
             List<ParticipationRequestDto> rejectedRequests = feigenClient.saveBatchRequests(requests);
             return Map.of("rejectedRequests", rejectedRequests);
         }
@@ -132,16 +133,17 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         List<ParticipationRequestDto> confirmed = requests.stream().limit(availableSlots).toList();
         List<ParticipationRequestDto> rejected = requests.stream().skip(availableSlots).toList();
 
-        updateRequestStatuses(confirmed, RequestStatus.CONFIRMED);
-        updateRequestStatuses(rejected, RequestStatus.REJECTED);
+        confirmed.forEach(r -> r.setStatus(RequestStatus.CONFIRMED));
+        rejected.forEach(r -> r.setStatus(RequestStatus.REJECTED));
+        List<ParticipationRequestDto> resConfirmed = confirmed.isEmpty() ? List.of() : feigenClient.saveBatchRequests(confirmed);
+        List<ParticipationRequestDto> resRejected  = rejected.isEmpty()  ? List.of() : feigenClient.saveBatchRequests(rejected);
 
-        feigenClient.saveBatchRequests(requests);
         event.setConfirmedRequests(event.getConfirmedRequests() + confirmed.size());
         eventRepository.save(event);
 
         return Map.of(
-                "confirmedRequests", confirmed,
-                "rejectedRequests", rejected
+                "confirmedRequests", resConfirmed,
+                "rejectedRequests", resRejected
         );
 
     }
