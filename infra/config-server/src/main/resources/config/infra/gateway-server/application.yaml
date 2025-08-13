@@ -3,18 +3,55 @@ spring:
     gateway:
       discovery.locator.enabled: true
       routes:
-      - id: main_service_route
-        uri: lb://main-service
-        predicates:
-          - Path=/**
+        - id: user_service_route
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
+
+        - id: request_service_user_requests
+          uri: lb://request-service
+          predicates:
+            - Path=/users/*/requests/**
+
+        # Admin comment
+        - id: comment_service_admin
+          uri: lb://comment-service
+          predicates:
+            - Path=/admin/comments/**
+
+        # Private user comment
+        - id: comment_service_private
+          uri: lb://comment-service
+          predicates:
+            - Path=/users/*/comments/**
+
+        # Public comment read
+        - id: comment_service_public_event_comments
+          uri: lb://comment-service
+          predicates:
+            - Path=/events/*/comments
+
+        - id: comment_service_public_comment_replies
+          uri: lb://comment-service
+          predicates:
+            - Path=/comments/*/replies
+
+        - id: event_service_route
+          uri: lb://event-service
+          predicates:
+            - Path=/**
+
 server:
   port: 8080
 
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
-    org.springframework.http.server.reactive: INFO
-
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: TRACE
+    org.springframework.cloud.gateway.filter: DEBUG
+    org.springframework.web.reactive: DEBUG
+    reactor.netty.http.client: DEBUG
+    reactor.netty.http.server: DEBUG
 
 management:
   endpoints:

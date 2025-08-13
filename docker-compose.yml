@@ -41,24 +41,6 @@ services:
     networks:
       - explore-network
 
-  ewm-service:
-    build: ./main-service
-    container_name: ewm-service
-    restart: always
-    depends_on:
-      - ewm-db
-      - stats-server
-    environment:
-      SPRING_PROFILES_ACTIVE: main
-      SPRING_DATASOURCE_URL: jdbc:postgresql://ewm-db:5432/explore
-      SPRING_DATASOURCE_USERNAME: explore_user
-      SPRING_DATASOURCE_PASSWORD: explore_password
-      STATS_SERVER_URL: http://stats-server:9090
-    ports:
-      - "8080:8080"
-    networks:
-      - explore-network
-
 networks:
   explore-network:
     driver: bridge
