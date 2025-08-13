@@ -1,0 +1,39 @@
+@namespace("ru.practicum.ewm.stats.avro")
+protocol Stats {
+
+	/**
+	 * Тип действия пользователя
+	 */
+	enum ActionTypeAvro {
+		VIEW,
+		REGISTER,
+		LIKE
+	}
+
+	/**
+	 * Сообщение о действии пользователя для топика stats.user-actions.v1
+	 */
+	record UserActionAvro {
+		long userId;
+		long eventId;
+		ActionTypeAvro actionType;
+
+		/** миллисекунды с эпохи; logicalType = timestamp-millis */
+		@logicalType("timestamp-millis")
+		long timestamp;
+	}
+
+	/**
+	 * Сходство пары мероприятий для топика stats.events-similarity.v1
+	 * Всегда храните пару как (minId, maxId)
+	 */
+	record EventSimilarityAvro {
+		long eventA;   // меньший id
+		long eventB;   // больший id
+		double score;
+
+		/** миллисекунды с эпохи; logicalType = timestamp-millis */
+		@logicalType("timestamp-millis")
+		long timestamp;
+	}
+}

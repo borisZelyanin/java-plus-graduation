@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   profiles:
     active: main-service
@@ -11,13 +8,10 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: ru.practicum.collector.kafka.GeneralKafkaSerializer
-
     consumer:
       group-id: collector-sensor-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: ru.practicum.collector.kafka.GeneralKafkaDeserializer
-      properties:
-        avro.deserializer.target.class: ru.yandex.practicum.kafka.telemetry.event.SensorEventAvro
 
 logging:
   level:
@@ -31,17 +25,20 @@ logging:
         grpc: DEBUG
     ru.practicum.collector: TRACE
 
+server:
+  port: 0
+
+collector:
+  bootstrap-servers: localhost:9092
+  client-id: collector-producer
+  user-actions: stats.user-actions.v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "env,health,metrics"
+
 grpc:
   server:
-    port: 59090
-
-  client:
-    echo:
-      address: 'static://127.0.0.1:59090'
-      enableKeepAlive: true
-      keepAliveWithoutCalls: true
-      negotiationType: TLS
-
-springdoc:
-  api-docs:
-    path: /v3/api-docs
+    port: 0

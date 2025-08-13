@@ -8,6 +8,17 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "aggregator")
 public class AggregatorProperties {
-    private String inputTopic;
-    private String outputTopic;
+
+    private String bootstrapServers;
+    private String clientId;
+
+    // Топики
+    private String userActions;
+    private String eventsSimilarity;
+
+    // Прочее
+    private Long pollTimeoutMs = 2000L;
+
+    private String groupId;
+
 }
