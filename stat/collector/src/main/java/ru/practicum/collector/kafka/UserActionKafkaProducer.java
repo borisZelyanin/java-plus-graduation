@@ -4,6 +4,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.specific.SpecificRecord;
+import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -25,20 +26,20 @@ import java.util.concurrent.CompletableFuture;
 public class UserActionKafkaProducer {
 
     /** Типизированный шаблон: ключ Long, значение — конкретный Avro (UserActionAvro). */
-    private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
+    private final KafkaTemplate<Long, SpecificRecordBase> kafkaTemplate;
     private final CollectorProperties props;
 
     /**
      * Асинхронно отправляет событие в топик {@code collector.user-actions}.
      * Ключом выступает {@code eventId}, таймстемп берётся из сообщения (если есть) — для сортировки на брокере.
      */
-    public CompletableFuture<SendResult<Long, UserActionAvro>> send(UserActionAvro payload) {
+    public CompletableFuture<SendResult<Long, SpecificRecordBase>> send(UserActionAvro payload) {
         final String topic = props.getTopicUserActions();
         final Long key = payload.getEventId(); // партиционирование по событию
         final Long tsMillis = extractTimestampMillis(payload);
 
         // построим запись и добавим несколько полезных заголовков для дебага
-        ProducerRecord<Long, UserActionAvro> record = new ProducerRecord<>(topic, null, tsMillis, key, payload);
+        ProducerRecord<Long, SpecificRecordBase> record = new ProducerRecord<>(topic, null, tsMillis, key, payload);
         record.headers()
                 .add(new RecordHeader("x-user-id", String.valueOf(payload.getUserId()).getBytes(StandardCharsets.UTF_8)))
                 .add(new RecordHeader("x-event-id", String.valueOf(payload.getEventId()).getBytes(StandardCharsets.UTF_8)))
@@ -47,7 +48,7 @@ public class UserActionKafkaProducer {
         log.debug("➡️  Kafka send: topic={}, key={}, ts={}, payload={}",
                 topic, key, tsMillis, shortPayload(payload));
 
-        CompletableFuture<SendResult<Long, UserActionAvro>> future = kafkaTemplate.send(record);
+        CompletableFuture<SendResult<Long, SpecificRecordBase>> future = kafkaTemplate.send(record);
 
         future.whenComplete((res, ex) -> {
             if (ex != null) {

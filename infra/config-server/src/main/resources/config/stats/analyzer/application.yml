@@ -18,9 +18,6 @@ spring:
     init:
       mode: always
 
-server:
-  port: 0
-
 grpc:
   server:
     port: 0
@@ -31,9 +28,4 @@ analyzer:
 
 logging:
   level:
-    root: INFO
     ru.practicum.analyzer: DEBUG
-    org.hibernate.SQL: TRACE
-    org.hibernate.type.descriptor.sql: TRACE
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.springframework.transaction.interceptor: TRACE

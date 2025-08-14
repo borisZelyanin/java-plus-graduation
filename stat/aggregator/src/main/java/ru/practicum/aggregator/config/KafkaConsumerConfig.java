@@ -3,11 +3,11 @@ package ru.practicum.aggregator.config;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.LongDeserializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import ru.practicum.aggregator.kafka.UserActionDeserializer;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
+import serializer.UserActionDeserializer;
 
 import java.util.Properties;
 
@@ -15,21 +15,17 @@ import java.util.Properties;
 public class KafkaConsumerConfig {
 
     @Bean
-    public Consumer<String, UserActionAvro> sensorConsumer(AggregatorProperties props) {
+    public KafkaConsumer<Long, UserActionAvro> sensorConsumer(AggregatorProperties props) {
         Properties cfg = new Properties();
 
         // базовые настройки
-        cfg.put(
-                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                props.getBootstrapServers() != null ? props.getBootstrapServers() : "localhost:9092"
-        );
-        cfg.put(
-                ConsumerConfig.GROUP_ID_CONFIG,
-                props.getGroupId() != null ? props.getGroupId() : "aggregator-group"
-        );
+        cfg.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                props.getBootstrapServers() != null ? props.getBootstrapServers() : "localhost:9092");
+        cfg.put(ConsumerConfig.GROUP_ID_CONFIG,
+                props.getGroupId() != null ? props.getGroupId() : "aggregator-group");
 
-        // десериализация
-        cfg.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        // десериализация под <Long, UserActionAvro>
+        cfg.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName());
         cfg.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, UserActionDeserializer.class.getName());
 
         // поведение чтения

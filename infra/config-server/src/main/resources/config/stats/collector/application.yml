@@ -21,17 +21,8 @@ logging:
         grpc: DEBUG
     ru.practicum.collector: TRACE
 
-server:
-  port: 0
-
 collector:
   topic-user-actions: stats.user-actions.v1
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "env,health,metrics"
 
 grpc:
   server:
