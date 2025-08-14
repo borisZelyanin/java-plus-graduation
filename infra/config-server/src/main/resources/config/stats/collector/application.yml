@@ -4,14 +4,10 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
-
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: ru.practicum.collector.kafka.GeneralKafkaSerializer
-    consumer:
-      group-id: collector-sensor-group
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: ru.practicum.collector.kafka.GeneralKafkaDeserializer
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      value-serializer: serializer.GeneralAvroSerializer
+      client-id: stats.collector
 
 logging:
   level:
@@ -29,9 +25,7 @@ server:
   port: 0
 
 collector:
-  bootstrap-servers: localhost:9092
-  client-id: collector-producer
-  user-actions: stats.user-actions.v1
+  topic-user-actions: stats.user-actions.v1
 
 management:
   endpoints:

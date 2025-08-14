@@ -2,10 +2,8 @@ package ru.practicum.collector.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.stereotype.Service;
-import ru.practicum.collector.config.CollectorProperties;
+import ru.practicum.collector.kafka.UserActionKafkaProducer;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.grpc.stats.action.ActionTypeProto;
@@ -18,12 +16,9 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class UserActionService {
 
-    private final Producer<String, UserActionAvro> producer;
-    private final CollectorProperties props;
+    private final UserActionKafkaProducer kafkaProducer;
 
     public void processUserAction(UserActionProto request) {
-        // маппинг Timestamp -> millis
-        long tsMillis = toMillis(request.getTimestamp());
 
         // маппинг enum
         ActionTypeAvro actionTypeAvro = mapActionType(request.getActionType());
@@ -33,27 +28,10 @@ public class UserActionService {
         avro.setUserId(request.getUserId());
         avro.setEventId(request.getEventId());
         avro.setActionType(actionTypeAvro);
-        avro.setTimestamp(Instant.ofEpochMilli(tsMillis));
+        avro.setTimestamp(Instant.ofEpochSecond(request.getTimestamp().getSeconds(), request.getTimestamp().getNanos()));
 
-        // ключ
-        String key = request.getUserId() + "_" + request.getEventId();
+        kafkaProducer.send(avro);
 
-        ProducerRecord<String, UserActionAvro> record =
-                new ProducerRecord<>(props.getUserActions(), key, avro);
-
-        producer.send(record, (md, ex) -> {
-            if (ex != null) {
-                log.error("❌ Kafka send failed: topic={}, key={}", props.getUserActions(), key, ex);
-            } else {
-                log.debug("✅ Sent to Kafka: topic={}, partition={}, offset={}",
-                        md.topic(), md.partition(), md.offset());
-            }
-        });
-    }
-
-    private long toMillis(com.google.protobuf.Timestamp ts) {
-        if (ts == null) return System.currentTimeMillis();
-        return ts.getSeconds() * 1000L + ts.getNanos() / 1_000_000L;
     }
 
     private ActionTypeAvro mapActionType(ActionTypeProto t) {
@@ -62,7 +40,7 @@ public class UserActionService {
             case ACTION_VIEW     -> ActionTypeAvro.VIEW;
             case ACTION_REGISTER -> ActionTypeAvro.REGISTER;
             case ACTION_LIKE     -> ActionTypeAvro.LIKE;
-            default -> ActionTypeAvro.VIEW;
+            default -> throw new IllegalArgumentException("Invalid action type: " + t);
         };
     }
 }
