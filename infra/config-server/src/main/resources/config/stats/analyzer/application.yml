@@ -17,6 +17,10 @@ spring:
   sql:
     init:
       mode: always
+
+server:
+  port: 0
+
 grpc:
   server:
     port: 0
