@@ -1,12 +1,13 @@
+// src/main/java/ru/practicum/analyzer/config/KafkaConsumerConfig.java
 package ru.practicum.analyzer.config;
 
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.springframework.context.annotation.*;
-import ru.practicum.analyzer.kafka.GeneralKafkaSerializer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import ru.practicum.analyzer.kafka.GeneralKafkaDeserializer;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
-
 
 import java.util.Properties;
 
@@ -15,17 +16,17 @@ public class KafkaConsumerConfig {
 
     @Bean
     public Consumer<String, UserActionAvro> userActionsConsumer(AnalyzerProperties props) {
-        var cfg = base(props);
-        cfg.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GeneralKafkaSerializer.class.getName());
-        cfg.put("general.deserializer.targetType", UserActionAvro.class.getName());
+        Properties cfg = base(props);
+        cfg.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GeneralKafkaDeserializer.class.getName());
+        cfg.put(GeneralKafkaDeserializer.TARGET_TYPE_PROP, UserActionAvro.class.getName());
         return new KafkaConsumer<>(cfg);
     }
 
     @Bean
     public Consumer<String, EventSimilarityAvro> similaritiesConsumer(AnalyzerProperties props) {
-        var cfg = base(props);
-        cfg.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GeneralKafkaSerializer.class.getName());
-        cfg.put("general.deserializer.targetType", EventSimilarityAvro.class.getName());
+        Properties cfg = base(props);
+        cfg.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GeneralKafkaDeserializer.class.getName());
+        cfg.put(GeneralKafkaDeserializer.TARGET_TYPE_PROP, EventSimilarityAvro.class.getName());
         return new KafkaConsumer<>(cfg);
     }
 
