@@ -15,7 +15,7 @@ import java.util.Properties;
 public class KafkaConsumerConfig {
 
     @Bean
-    public KafkaConsumer<Long, UserActionAvro> sensorConsumer(AggregatorProperties props) {
+    public Consumer<Long, UserActionAvro> sensorConsumer(AggregatorProperties props) {
         Properties cfg = new Properties();
 
         // базовые настройки

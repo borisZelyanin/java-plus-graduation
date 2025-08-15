@@ -11,15 +11,7 @@ spring:
 
 logging:
   level:
-    org:
-      apache:
-        kafka: INFO
-      springframework:
-        kafka: DEBUG
-        web: DEBUG
-      io:
-        grpc: DEBUG
-    ru.practicum.collector: TRACE
+    ru.practicum.collector: INFO
 
 collector:
   topic-user-actions: stats.user-actions.v1

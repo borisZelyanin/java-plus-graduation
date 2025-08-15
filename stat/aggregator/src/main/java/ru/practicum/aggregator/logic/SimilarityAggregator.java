@@ -1,107 +1,134 @@
 package ru.practicum.aggregator.logic;
 
-import org.springframework.stereotype.Repository;
-
+import org.springframework.stereotype.Component;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 import ru.practicum.ewm.stats.avro.EventSimilarityAvro;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
-@Repository
+@Component
 public class SimilarityAggregator {
 
     /** eventId -> (userId -> maxWeight) */
-    private final Map<Long, Map<Long, Double>> weightsByEventUser = new ConcurrentHashMap<>();
-    /** userId  -> (eventId -> maxWeight) */
-    private final Map<Long, Map<Long, Double>> weightsByUserEvent = new ConcurrentHashMap<>();
-    /** eventId -> S_A */
-    private final Map<Long, Double> sumWeightsByEvent = new ConcurrentHashMap<>();
-    /** firstEventId -> (secondEventId -> S_min), где first < second */
-    private final Map<Long, Map<Long, Double>> minWeightsSums = new ConcurrentHashMap<>();
+    private final Map<Long, Map<Long, Double>> userActionsWeight = new HashMap<>();
 
-    // Константы весов (можно вынести в application.yml, если захочешь конфигурировать)
-    private static final double VIEW_WEIGHT = 0.4;
+    /** eventId -> sum of user weights for this event */
+    private final Map<Long, Double> eventsWeightsSum = new HashMap<>();
+
+    /** firstEventId -> (secondEventId -> sum of min weights), where first < second */
+    private final Map<Long, Map<Long, Double>> minWeightsSum = new HashMap<>();
+
+    private static final double VIEW_WEIGHT     = 0.4;
     private static final double REGISTER_WEIGHT = 0.8;
-    private static final double LIKE_WEIGHT = 1.0;
+    private static final double LIKE_WEIGHT     = 1.0;
 
-    /** Инкрементальный апдейт похожести пар после действия пользователя */
-    public List<EventSimilarityAvro> updateEventSimilarity(UserActionAvro action) {
-        if (action == null) {
-            return List.of();
-        }
+    /**
+     * Инкрементально пересчитывает коэффициенты сходства для пар событий,
+     * затронутых действием пользователя.
+     */
+    public Optional<List<EventSimilarityAvro>> updateEventSimilarity(UserActionAvro userAction) {
+        if (userAction == null) return Optional.empty();
 
-        final long u = action.getUserId();
-        final long A = action.getEventId();
-        final long tsMillis = action.getTimestamp() != null
-                ? action.getTimestamp().toEpochMilli()
-                : System.currentTimeMillis();
+        final long userId  = userAction.getUserId();
+        final long eventId = userAction.getEventId();
+        final Instant ts   = userAction.getTimestamp() != null ? userAction.getTimestamp() : Instant.now();
 
-        final double wNew = getUserActionWeight(action.getActionType());
-        if (wNew <= 0.0) {
-            return List.of();
-        }
+        // старый/новый максимальный вес взаимодействия пользователя с eventId
+        Map<Long, Double> usersWeightsForEvent =
+                userActionsWeight.computeIfAbsent(eventId, k -> new HashMap<>());
 
-        Map<Long, Double> byUser =
-                weightsByUserEvent.computeIfAbsent(u, __ -> new ConcurrentHashMap<>());
-        double wOld = byUser.getOrDefault(A, 0.0);
+        final double oldWeight = usersWeightsForEvent.getOrDefault(userId, 0.0);
+        final double newWeight = weightOf(userAction.getActionType());
 
-        if (wNew <= wOld) {
-            return List.of();
-        }
+        // если новый вес не улучшает максимум — ничего не делаем
+        if (oldWeight >= newWeight) return Optional.empty();
 
-        // 1) обновляем веса
-        byUser.put(A, wNew);
-        weightsByEventUser
-                .computeIfAbsent(A, __ -> new ConcurrentHashMap<>())
-                .put(u, wNew);
+        // 1) обновить максимум веса для пользователя по этому событию
+        usersWeightsForEvent.merge(userId, newWeight, Math::max);
 
-        // 2) обновляем сумму весов по событию
-        double deltaWA = wNew - wOld;
-        sumWeightsByEvent.merge(A, deltaWA, Double::sum);
+        // 2) обновить суммарный вес по событию
+        final double newSum = eventsWeightsSum.getOrDefault(eventId, 0.0) - oldWeight + newWeight;
+        eventsWeightsSum.put(eventId, newSum);
 
-        // 3) обновляем S_min и считаем score для всех других событий пользователя
+        // 3) обновить суммы min-весов и пересчитать сходство с другими событиями,
+        //    с которыми этот же пользователь уже взаимодействовал
         List<EventSimilarityAvro> out = new ArrayList<>();
-        for (Map.Entry<Long, Double> e : byUser.entrySet()) {
-            long B = e.getKey();
-            if (B == A) continue;
 
-            double w_u_B = e.getValue();
-            double oldMin = Math.min(wOld, w_u_B);
-            double newMin = Math.min(wNew, w_u_B);
-            double deltaSmin = newMin - oldMin;
-            if (deltaSmin == 0.0) continue;
+        for (long otherEventId : userActionsWeight.keySet()) {
+            if (otherEventId == eventId) continue;
 
-            long first = Math.min(A, B);
-            long second = Math.max(A, B);
+            Map<Long, Double> otherEventUsers = userActionsWeight.get(otherEventId);
+            if (otherEventUsers == null || !otherEventUsers.containsKey(userId)) continue;
 
-            minWeightsSums
-                    .computeIfAbsent(first, __ -> new ConcurrentHashMap<>())
-                    .merge(second, deltaSmin, Double::sum);
+            // обновить сумму минимальных весов для пары (eventId, otherEventId)
+            double newSumMinPairWeight =
+                    updateMinWeightSum(eventId, otherEventId, userId, oldWeight, newWeight);
 
-            double SA = sumWeightsByEvent.getOrDefault(first, 0.0);
-            double SB = sumWeightsByEvent.getOrDefault(second, 0.0);
-            double Smin = minWeightsSums.getOrDefault(first, Map.of())
-                    .getOrDefault(second, 0.0);
+            // пересчитать сходство
+            double similarity = calcSimilarity(eventId, otherEventId, newSumMinPairWeight);
 
-            if (SA > 0 && SB > 0 && Smin > 0) {
-                double score = Smin / (SA * SB);
-
-                out.add(EventSimilarityAvro.newBuilder()
-                        .setEventA(first)
-                        .setEventB(second)
-                        .setScore(score)
-                        .setTimestamp(Instant.ofEpochMilli(tsMillis))
-                        .build());
-            }
+            out.add(buildSimilarity(eventId, otherEventId, similarity, ts));
         }
 
-        return out;
+        return out.isEmpty() ? Optional.empty() : Optional.of(out);
     }
-    /** Получение веса действия без отдельного класса-конфига */
-    private double getUserActionWeight(ActionTypeAvro actionType) {
+
+    /** Вычисление коэффициента сходства на основе суммы минимальных весов. */
+    private double calcSimilarity(long eventId, long otherEventId, double newSumMinPairWeight) {
+        if (newSumMinPairWeight == 0) return 0.0;
+
+        double sumEventWeight      = eventsWeightsSum.getOrDefault(eventId, 0.0);
+        double sumOtherEventWeight = eventsWeightsSum.getOrDefault(otherEventId, 0.0);
+
+        // формула как в исходной логике: делим на произведение корней сумм
+        // (если нужна другая нормировка — меняется только эта строка)
+        return newSumMinPairWeight / (Math.sqrt(sumEventWeight) * Math.sqrt(sumOtherEventWeight));
+    }
+
+    /**
+     * Обновляет сумму минимальных весов для пары мероприятий (порядок фиксируем first<second).
+     * Возвращает новое значение суммы для пары.
+     */
+    private double updateMinWeightSum(long eventId, long otherEventId, long userId,
+                                      double oldWeight, double newWeight) {
+
+        double otherOldWeight = userActionsWeight.get(otherEventId).get(userId);
+
+        double oldMin = Math.min(oldWeight,      otherOldWeight);
+        double newMin = Math.min(newWeight,      otherOldWeight);
+
+        long first  = Math.min(eventId, otherEventId);
+        long second = Math.max(eventId, otherEventId);
+
+        double oldSumForPair = minWeightsSum
+                .computeIfAbsent(first, k -> new HashMap<>())
+                .getOrDefault(second, 0.0);
+
+        // если минимум не поменялся — сумма остаётся прежней
+        if (Double.compare(oldMin, newMin) == 0) return oldSumForPair;
+
+        double updatedSumForPair = oldSumForPair - oldMin + newMin;
+        minWeightsSum.get(first).put(second, updatedSumForPair);
+
+        return updatedSumForPair;
+    }
+
+    /** Построение сообщения о сходстве событий. */
+    private EventSimilarityAvro buildSimilarity(long a, long b, double score, Instant ts) {
+        long first  = Math.min(a, b);
+        long second = Math.max(a, b);
+        return EventSimilarityAvro.newBuilder()
+                .setEventA(first)
+                .setEventB(second)
+                .setScore(score)
+                .setTimestamp(ts)
+                .build();
+    }
+
+    /** Маппинг действия пользователя в вес. */
+    private double weightOf(ActionTypeAvro actionType) {
         if (actionType == null) return 0.0;
         return switch (actionType) {
             case VIEW     -> VIEW_WEIGHT;
