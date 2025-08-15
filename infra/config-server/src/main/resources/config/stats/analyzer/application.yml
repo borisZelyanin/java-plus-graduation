@@ -22,6 +22,15 @@ grpc:
   server:
     port: 0
 
+server:
+  port: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
 analyzer:
   user-actions: stats.user-actions.v1
   events-similarity: stats.events-similarity.v1

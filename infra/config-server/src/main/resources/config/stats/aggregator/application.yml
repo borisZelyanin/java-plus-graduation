@@ -18,3 +18,12 @@ aggregator:
   bootstrap-servers: localhost:9092
   client-id: aggregator-producer
   group-id:  aggregator-group
+
+server:
+  port: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
