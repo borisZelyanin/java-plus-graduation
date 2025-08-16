@@ -4,6 +4,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
+import ru.practicum.lib.enums.RequestStatus;
 import ru.practicum.services.event.model.Event;
 
 
@@ -14,4 +15,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
 
     List<Event> findByInitiator(Long initiatorId,
                                   Pageable pageable);
+    List<Event> findByIdIn(List<Long> events);
+
+
 }

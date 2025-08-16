@@ -10,4 +10,6 @@ import java.util.List;
 public interface PublicEventService {
     List<EventShortDto> searchPublicEvents(SearchPublicEventsParamDto searchPublicEventsParamDto);
     EventFullDto getPublicEvent(Long eventId, HttpServletRequest request);
+    List<EventFullDto> getRecommendationsForUser(long userId, int maxResult);
+    void checkUserRegistrationAtEvent(long userId, long eventId);
 }

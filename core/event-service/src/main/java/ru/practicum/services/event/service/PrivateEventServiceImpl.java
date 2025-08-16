@@ -1,9 +1,13 @@
 package ru.practicum.services.event.service;
+import jakarta.ws.rs.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import ru.practicum.lib.exception.NotFoundException;
+import ru.practicum.wrap.grpc.client.stats.AnalyzerClient;
+import ru.practicum.grpc.stats.recommendation.RecommendedEventProto;
 import ru.practicum.lib.dto.event.EventFullDto;
 import ru.practicum.lib.dto.event.EventShortDto;
 import ru.practicum.lib.dto.event.NewEventDto;
@@ -26,9 +30,10 @@ import ru.practicum.services.event.utils.LocationCalc;
 import ru.practicum.services.event.support.EventValidator;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,7 +44,7 @@ import java.util.stream.Collectors;
 public class PrivateEventServiceImpl implements PrivateEventService {
 
     private final EventRepository eventRepository;
-    private final FeigenClient feigenClient;
+    private final FeigenClient feignClient;
     private final LocationCalc locationCalc;
     private final EventValidator eventValidator;
     private final EventServiceHelperBean eventServiceHelperBean;
@@ -51,7 +56,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         return eventRepository.findByInitiator(userId, pageable)
                 .stream()
                 .map(  event -> {
-                    UserDto    user     = feigenClient.getUserById(event.getInitiator());
+                    UserDto    user     = feignClient.getUserById(event.getInitiator());
                     return EventMapper.toShortDto(event,  user);
                 })
                 .collect(Collectors.toList());
@@ -60,7 +65,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     public EventFullDto createEvent(Long userId, NewEventDto request) {
         Category category = eventServiceHelperBean.getCategoryById(request.getCategory());
         LocationEntity location = locationCalc.ResolveLocation(LocationMapper.toEntity(request.getLocation()));
-        UserDto    user     = feigenClient.getUserById(userId);
+        UserDto    user     = feignClient.getUserById(userId);
         Event event = EventMapper.toEvent(request, user.getId(), category);
         event.setLocation(location);
         event.setState(EventState.PENDING);
@@ -76,7 +81,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     public EventFullDto getUserEventById(Long userId, Long eventId) {
         Event event = eventServiceHelperBean.getEventById(eventId);
         eventValidator.validateEventOwnership(event, userId);
-        UserDto    user     = feigenClient.getUserById(event.getInitiator());
+        UserDto    user     = feignClient.getUserById(event.getInitiator());
         return EventMapper.toFullDto(event,user);
     }
 
@@ -85,7 +90,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                                         Long eventId,
                                         UpdateEventUserRequest updateDto) {
 
-        UserDto user = feigenClient.getUserById(userId);
+        UserDto user = feignClient.getUserById(userId);
         Event event = eventServiceHelperBean.getEventById(eventId);
 
 
@@ -103,14 +108,14 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = eventServiceHelperBean.getEventById(eventId);
         eventValidator.validateEventOwnership(event, userId);
 
-        return  feigenClient.getRequestByEvent(eventId);
+        return  feignClient.getRequestByEvent(eventId);
     }
 
     @Override
     public Map<String, List<ParticipationRequestDto>> approveRequests(Long userId,
                                                                       Long eventId,
                                                                       EventRequestStatusUpdateRequest eventRequestStatusUpdateRequest) {
-        UserDto user = feigenClient.getUserById(userId);
+        UserDto user = feignClient.getUserById(userId);
         Event event = eventServiceHelperBean.getEventById(eventId);
         eventValidator.validateInitiator(event, user);
 
@@ -125,7 +130,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         if (status == RequestStatus.REJECTED) {
             requests.forEach(r -> r.setStatus(RequestStatus.REJECTED));
-            List<ParticipationRequestDto> rejectedRequests = feigenClient.saveBatchRequests(requests);
+            List<ParticipationRequestDto> rejectedRequests = feignClient.saveBatchRequests(requests);
             return Map.of("rejectedRequests", rejectedRequests);
         }
 
@@ -135,8 +140,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         confirmed.forEach(r -> r.setStatus(RequestStatus.CONFIRMED));
         rejected.forEach(r -> r.setStatus(RequestStatus.REJECTED));
-        List<ParticipationRequestDto> resConfirmed = confirmed.isEmpty() ? List.of() : feigenClient.saveBatchRequests(confirmed);
-        List<ParticipationRequestDto> resRejected  = rejected.isEmpty()  ? List.of() : feigenClient.saveBatchRequests(rejected);
+        List<ParticipationRequestDto> resConfirmed = confirmed.isEmpty() ? List.of() : feignClient.saveBatchRequests(confirmed);
+        List<ParticipationRequestDto> resRejected  = rejected.isEmpty()  ? List.of() : feignClient.saveBatchRequests(rejected);
 
         event.setConfirmedRequests(event.getConfirmedRequests() + confirmed.size());
         eventRepository.save(event);
@@ -146,14 +151,6 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 "rejectedRequests", resRejected
         );
 
-    }
-
-    public void updateRequestStatuses(List<ParticipationRequestDto> requests,
-                                      RequestStatus status) {
-        UpdateRequestsStatusDto body = new UpdateRequestsStatusDto();
-        body.setStatus(status);
-        body.setRequests(requests);
-        feigenClient.updateBatchRequestStatuses(body);
     }
 
 }

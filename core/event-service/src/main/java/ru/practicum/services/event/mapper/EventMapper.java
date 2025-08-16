@@ -64,7 +64,7 @@ public class EventMapper {
                 .initiator(user)
                 .paid(event.getPaid())
                 .title(event.getTitle())
-                .views(0L)
+                .rating(0L)
                 .build();
     }
 
@@ -85,7 +85,7 @@ public class EventMapper {
                 .requestModeration(event.getRequestModeration())
                 .state(event.getState())
                 .title(event.getTitle())
-                .views(0L)
+                .rating(0L)
                 .build();
     }
 
