@@ -30,6 +30,15 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+grpc:
+  client:
+    collector:
+      address: 'discovery:///collector'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+
+
 logging:
   level:
     root: INFO

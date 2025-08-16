@@ -15,6 +15,7 @@ import ru.practicum.lib.exception.NotFoundException;
 import ru.practicum.lib.exception.ValidationException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -49,6 +50,32 @@ public class FeigenClient {
         }
         catch (FeignException.NotFound e) {
             throw new NotFoundException(" event = " + userId + " нет.");
+        }
+    }
+
+
+    public List<UserDto> getUserListById(List<Long> userIds) {
+        try {
+            return userServiceFeignClient.getUserListById(userIds);
+        } catch (FeignException.NotFound e) {
+            throw new NotFoundException("Пользователи с id " + userIds + " не найдены.");
+        } catch (FeignException e) {
+            throw new RuntimeException("Ошибка при обращении к user-service: " + e.getMessage(), e);
+        }
+    }
+
+
+    public Optional<ParticipationRequestDto> getParticipationRequest(Long userId, Long eventId) {
+        try {
+            ParticipationRequestDto dto = requestServiceFeignClient.getParticipationRequest(userId, eventId);
+            return Optional.ofNullable(dto);
+        } catch (FeignException.NotFound e) {
+            return Optional.empty(); // ✅ нет заявки — пустой Optional
+        } catch (FeignException e) {
+            throw new RuntimeException(
+                    "Ошибка при запросе заявки пользователя id=" + userId + " на событие id=" + eventId + ": " + e.getMessage(),
+                    e
+            );
         }
     }
 

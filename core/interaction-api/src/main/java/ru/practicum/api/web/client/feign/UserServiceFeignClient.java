@@ -27,4 +27,7 @@ public interface UserServiceFeignClient {
 
     @DeleteMapping("/{userId}")
     void deleteUser(@PathVariable("userId") Long userId);
+
+    @PostMapping(value = "/all", consumes = "application/json")
+    List<UserDto> getUserListById(@RequestBody List<Long> ids);
 }

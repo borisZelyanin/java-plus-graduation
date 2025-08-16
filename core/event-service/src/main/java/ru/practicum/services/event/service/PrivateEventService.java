@@ -20,4 +20,5 @@ public interface PrivateEventService {
     EventFullDto updateUserEvent(Long userId, Long eventId, UpdateEventUserRequest dto);
     List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId);
     Map<String, List<ParticipationRequestDto>> approveRequests(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
+
 }
