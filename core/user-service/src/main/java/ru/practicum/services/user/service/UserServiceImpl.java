@@ -53,4 +53,12 @@ public class UserServiceImpl implements UserService {
         }
         userRepository.deleteById(userId);
     }
+
+    @Override
+    public List<UserDto> getListById(List<Long> ids) {
+        return userRepository.findAllById(ids)
+                .stream()
+                .map(UserMapper::toDto)
+                .toList();
+    }
 }

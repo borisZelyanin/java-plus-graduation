@@ -26,6 +26,15 @@ management:
       exposure:
         include: "env,health,metrics,info"
 
+grpc:
+  client:
+    collector:
+      address: 'discovery:///collector'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+
+
 springdoc:
   api-docs:
     path: /v3/api-docs

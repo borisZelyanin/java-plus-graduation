@@ -1,0 +1,29 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: aggregator-group
+      client.id: "aggregator-client"
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      value-serializer: serializer.GeneralAvroSerializer
+      auto-offset-reset: earliest
+    producer:
+      group.id: "aggregator-group"
+      key.deserializer: org.apache.kafka.common.serialization.LongDeserializer
+      value.deserializer: serializer.UserActionDeserializer
+
+aggregator:
+  user-actions: stats.user-actions.v1
+  events-similarity: stats.events-similarity.v1
+  bootstrap-servers: localhost:9092
+  client-id: aggregator-producer
+  group-id:  aggregator-group
+
+server:
+  port: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
